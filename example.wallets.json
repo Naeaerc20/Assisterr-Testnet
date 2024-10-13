@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "wallet": "WALLET_ADDRESS_1",
+    "privateKey": "PRIVATE_KEY_1"
+  },
+  {
+    "id": 2,
+    "wallet": "WALLET_ADDRESS_2",
+    "privateKey": "PRIVATE_KEY_2"
+  },
+  {
+    "id": 3,
+    "wallet": "WALLET_ADDRESS_3",
+    "privateKey": "PRIVATE_KEY_3"
+  },
+  {
+    "id": 4,
+    "wallet": "WALLET_ADDRESS_4",
+    "privateKey": "PRIVATE_KEY_4"
+  },
+  {
+    "id": 5,
+    "wallet": "WALLET_ADDRESS_5",
+    "privateKey": "PRIVATE_KEY_5"
+  },
+  {
+    "id": 6,
+    "wallet": "WALLET_ADDRESS_6",
+    "privateKey": "PRIVATE_KEY_6"
+  },
+  {
+    "id": 7,
+    "wallet": "WALLET_ADDRESS_7",
+    "privateKey": "PRIVATE_KEY_7"
+  },
+  {
+    "id": 8,
+    "wallet": "WALLET_ADDRESS_8",
+    "privateKey": "PRIVATE_KEY_8"
+  },
+  {
+    "id": 9,
+    "wallet": "WALLET_ADDRESS_9",
+    "privateKey": "PRIVATE_KEY_9"
+  },
+  {
+    "id": 10,
+    "wallet": "WALLET_ADDRESS_10",
+    "privateKey": "PRIVATE_KEY_10"
+  }
+]
