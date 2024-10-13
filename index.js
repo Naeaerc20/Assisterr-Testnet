@@ -15,7 +15,7 @@ const { decodeUTF8 } = require('tweetnacl-util');
 const { Keypair } = require('@solana/web3.js');
 
 // Import custom functions from scripts/apis
-const { getBearers, getWallets, getLoginMessage, login, doDailyCheckIn, getUserInfo, setUserInfo } = require('./scripts/apis');
+const { getBearers, getWallets, getLoginMessage, login, doDailyCheckIn, getUserInfo, setUserInfo, generateRandomUsername } = require('./scripts/apis');
 
 // Define icons for better readability
 const ICONS = {
@@ -181,7 +181,8 @@ const authenticateAllWallets = async (wallets) => {
 
 // Function to perform the check-in
 const performCheckIn = async (bearers, wallets, continuous = false) => {
-    let dayCounter = 0;
+    // Initialize an object to track consecutive days for each account
+    const dayCounters = {};
 
     const checkInTask = async () => {
         for (let i = 0; i < bearers.length; i++) {
@@ -199,18 +200,17 @@ const performCheckIn = async (bearers, wallets, continuous = false) => {
                 const username = safeGet(userInfo, 'username');
                 const points = formatPoints(safeGet(userInfo, 'points'));
 
-                if (continuous) {
-                    dayCounter++;
-                    const displayName = username !== 'N/A' ? username : `User ${i + 1}`;
-                    console.log(colors.green(
-                        `${ICONS.success} ${displayName} Performed Check In for ${dayCounter} consecutive days - Your points are now ${points}`
-                    ));
+                // Initialize the counter for the user if not already set
+                if (!dayCounters[wallet.id]) {
+                    dayCounters[wallet.id] = 1; // First check-in
                 } else {
-                    const displayName = username !== 'N/A' ? username : `User ${i + 1}`;
-                    console.log(colors.green(
-                        `${ICONS.success} ${displayName} Performed Check successfully - Your points are now ${points}`
-                    ));
+                    dayCounters[wallet.id]++; // Increment for subsequent check-ins
                 }
+
+                const displayName = username !== 'N/A' ? username : `User ${i + 1}`;
+                console.log(colors.green(
+                    `${ICONS.success} ${displayName} Performed Check In for ${dayCounters[wallet.id]} consecutive days - Your points are now ${points}`
+                ));
 
                 // 2. Wait for 1 second before processing the next account
                 await new Promise(resolve => setTimeout(resolve, 1000));
@@ -255,7 +255,7 @@ const performCheckIn = async (bearers, wallets, continuous = false) => {
     await checkInTask();
 };
 
-// Function to set or update usernames
+// Función para establecer o actualizar nombres de usuario
 const setUsernames = async (bearers, wallets) => {
     for (let i = 0; i < bearers.length; i++) {
         const bearer = bearers[i];
@@ -266,25 +266,49 @@ const setUsernames = async (bearers, wallets) => {
                 throw new Error('No access_token available');
             }
 
-            // Fetch current user info
+            // Obtener información actual del usuario
             const userInfo = await getUserInfo(bearer);
             let currentUsername = safeGet(userInfo, 'username');
 
-            if (!currentUsername || currentUsername.trim() === "") {
-                // If username is empty or null, prompt to set a new username
+            // Si el nombre de usuario está vacío o es N/A, proceder a generarlo
+            if (!currentUsername || currentUsername.trim() === "N/A") {
                 console.log(colors.cyan(`\nWallet ID: ${wallet.id}`));
-                const newUsername = readline.question('Enter a username for this wallet: ').trim();
+                let setUsername = false; // Controla si se ha establecido un nombre de usuario
 
-                if (newUsername === "") {
-                    console.log(colors.red('Username cannot be empty. Skipping...\n'));
-                    continue;
+                while (!setUsername) {
+                    const autoGenerate = readline.question('Do you wish to auto-generate a username? (y/n): ').toLowerCase().trim();
+
+                    if (autoGenerate === 'y') {
+                        const newUsername = await generateRandomUsername(bearer);
+                        console.log(colors.cyan(`Generated Username: ${newUsername}`));
+
+                        const useUsername = readline.question('Do you wish to use this username? (y/n): ').toLowerCase().trim();
+                        if (useUsername === 'y') {
+                            await setUserInfo(bearer, newUsername);
+                            console.log(colors.green(`${ICONS.success} Username set to "${newUsername}" for Wallet ID ${wallet.id}`));
+                            setUsername = true; // Se ha establecido un nombre de usuario
+                        } else {
+                            console.log(colors.yellow('Username not set. Generating a new one...\n'));
+                        }
+                    } else {
+                        // Entrada manual para el nombre de usuario
+                        const newUsername = readline.question('Enter a username for this wallet: ').trim();
+                        if (newUsername === "") {
+                            console.log(colors.red('Username cannot be empty. Please try again.\n'));
+                        } else {
+                            const useUsername = readline.question(`Do you wish to use "${newUsername}" as your username? (y/n): `).toLowerCase().trim();
+                            if (useUsername === 'y') {
+                                await setUserInfo(bearer, newUsername);
+                                console.log(colors.green(`${ICONS.success} Username set to "${newUsername}" for Wallet ID ${wallet.id}`));
+                                setUsername = true; // Se ha establecido un nombre de usuario
+                            } else {
+                                console.log(colors.yellow('Username not set. Please try again.\n'));
+                            }
+                        }
+                    }
                 }
-
-                // Set the new username using the API
-                await setUserInfo(bearer, newUsername);
-                console.log(colors.green(`${ICONS.success} Username set to "${newUsername}" for Wallet ID ${wallet.id}`));
             } else {
-                // If username exists, ask if the user wants to change it
+                // Si ya existe un nombre de usuario, preguntar si se quiere cambiar
                 console.log(colors.cyan(`\nWallet ID: ${wallet.id}`));
                 console.log(`Current Username: ${colors.yellow(currentUsername)}`);
                 const change = readline.question('Do you want to change the username? (y/n): ').toLowerCase().trim();
@@ -294,10 +318,10 @@ const setUsernames = async (bearers, wallets) => {
 
                     if (newUsername === "") {
                         console.log(colors.red('Username cannot be empty. Skipping...\n'));
-                        continue;
+                        continue; // Omitir a la siguiente cuenta
                     }
 
-                    // Set the new username using the API
+                    // Establecer el nuevo nombre de usuario utilizando la API
                     await setUserInfo(bearer, newUsername);
                     console.log(colors.green(`${ICONS.success} Username updated to "${newUsername}" for Wallet ID ${wallet.id}`));
                 } else {
@@ -305,11 +329,11 @@ const setUsernames = async (bearers, wallets) => {
                 }
             }
 
-            // Optional: Wait for a short duration to avoid overwhelming the API
+            // Esperar brevemente para evitar sobrecargar la API
             await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
             console.error(colors.red(`${ICONS.error} Error setting username for Wallet ID ${wallet.id}: ${error.message}`));
-            // Continue with the next wallet
+            // Continuar con la siguiente wallet
         }
     }
 };

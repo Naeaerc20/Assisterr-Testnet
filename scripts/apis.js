@@ -129,7 +129,24 @@ const setUserInfo = async (Bearer, username) => {
     }
 };
 
-// Export all functions
+// Function to generate a random username
+const generateRandomUsername = async (Bearer) => {
+    try {
+        const response = await axios.post('https://api.assisterr.ai/incentive/users/generate_nick/', {}, {
+            headers: {
+                'Authorization': `Bearer ${Bearer}`
+            }
+        });
+        if (response.status === 200) {
+            return response.data.username; // Return the generated username
+        } else {
+            throw new Error(`Unexpected response status: ${response.status}`);
+        }
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     getBearers,
     getWallets,
@@ -137,5 +154,6 @@ module.exports = {
     login,
     doDailyCheckIn,
     getUserInfo,
-    setUserInfo // Export the new function
+    setUserInfo,
+    generateRandomUsername
 };
